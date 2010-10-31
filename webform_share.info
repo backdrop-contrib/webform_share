@@ -1,0 +1,7 @@
+; $Id: $
+name = Webform Share
+description = Enables users with the right permissions to export and import webforms. This can also be used to set content type default webforms.
+core = 6.x
+package = Webform
+dependencies[] = webform
+php = 5.0
