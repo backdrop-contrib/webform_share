@@ -43,16 +43,16 @@ function webform_share_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('webform_share_components_update_form', 1),
     'access callback' => 'webform_share_menu_access',
-    'access arguments' => array(1, 0),
+    'access arguments' => array(1),
     'weight' => 6,
     'type' => MENU_LOCAL_TASK,
   );
   $items['node/%webform_menu/webform/ws-reset'] = array(
     'title' => 'Reset',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('webform_share_components_update_form', 1, 1),
+    'page arguments' => array('webform_share_components_update_form', 1, TRUE),
     'access callback' => 'webform_share_menu_access',
-    'access arguments' => array(1, 1),
+    'access arguments' => array(1, TRUE),
     'weight' => 7,
     'type' => MENU_LOCAL_TASK,
   );
@@ -64,7 +64,7 @@ function webform_share_menu() {
  * Menu access callback.
  * Custom check on both the user access and node access.
  */
-function webform_share_menu_access($node, $reset = 0) {
+function webform_share_menu_access($node, $reset = FALSE) {
   if (node_access('update', $node)) {
     // We can only reset if there is some defaults set.
     if ($reset && !webform_share_node_type_defaults($node->type)) {
@@ -78,7 +78,7 @@ function webform_share_menu_access($node, $reset = 0) {
 /**
  * This form is used to update or to reset the webform.
  */
-function webform_share_components_update_form(&$form_state, $node, $reset = 0) {
+function webform_share_components_update_form(&$form_state, $node, $reset = FALSE) {
   $form = array();
   $form['#node'] = $node;
   $form['#reset'] = $reset;
@@ -142,7 +142,7 @@ function webform_share_export($node) {
  * This hooks into the node type form to add the webform share default settings
  * textarea.
  */
-function webform_share_form_node_type_form_alter(&$form, $form_state, $form_id) {
+function webform_share_form_node_type_form_alter(&$form, $form_state) {
   // Targets content type edit forms
   if (isset($form['identity']['type'])) {
     // Only adds the element to content types that have been tag for webforms.
@@ -186,7 +186,6 @@ function webform_share_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
   switch ($op) {
     case 'insert':
       if ($type_defaults = webform_share_node_type_defaults($node->type)) {
-        //eval($type_defaults);
         if ($webform = _webform_share_eval($type_defaults)) {
           // Maybe issues with doing an update during a insert?
           $updated_node = node_load($node->nid, NULL, TRUE);
