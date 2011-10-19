@@ -44,84 +44,10 @@ function webform_share_menu() {
     'weight' => 5,
     'type' => MENU_LOCAL_TASK,
   );
-  $items['node/%webform_menu/webform/ws-import'] = array(
-    'title' => 'Import',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('webform_share_components_update_form', 1),
-    'access callback' => 'webform_share_menu_access',
-    'access arguments' => array(1),
-    'weight' => 6,
-    'type' => MENU_LOCAL_TASK,
-  );
-  $items['node/%webform_menu/webform/ws-reset'] = array(
-    'title' => 'Reset',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('webform_share_components_update_form', 1, TRUE),
-    'access callback' => 'webform_share_menu_access',
-    'access arguments' => array(1, TRUE),
-    'weight' => 7,
-    'type' => MENU_LOCAL_TASK,
-  );
-
+// Webform module update assumes no new components, so these reset and import
+// would need to clone internal webform functionality, something that I do not
+// want to do with this module.
   return $items;
-}
-
-/**
- * Menu access callback.
- * Custom check on both the user access and node access.
- */
-function webform_share_menu_access($node, $reset = FALSE) {
-  if (node_access('update', $node)) {
-    // We can only reset if there is some defaults set.
-    if ($reset && !webform_share_node_type_defaults($node->type)) {
-      return FALSE;
-    }
-    return user_access('access webform share functionality');
-  }
-  return FALSE;
-}
-
-/**
- * This form is used to update or to reset the webform.
- */
-function webform_share_components_update_form($form, &$form_state, $node, $reset = FALSE) {
-  $form = array();
-  $form['#node'] = $node;
-  $form['#reset'] = $reset;
-  $form['selector'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Update components only'),
-    '#default_value' => 1,
-  );
-  $form['import'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Import code'),
-    '#default_value' => '',
-    '#description' => t('Copy the code that was generated from a webform share export. This should not include &lt;?PHP or ?&gt; tags.'),
-    '#required' => TRUE,
-  );
-  if ($reset) {
-    $form['import']['#access'] = FALSE;
-    $form['import']['#default_value'] = variable_get('webform_share_' . $form['#node']->type, '');
-  }
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => $reset ? t('Reset') : t('Import'),
-  );
-
-  return $form;
-}
-
-/**
- * Submit callback to update the node.
- */
-function webform_share_components_update_form_submit($form, &$form_state) {
-  $node = $form['#node'];
-  //eval($form_state['values']['import']);
-  if ($webform = _webform_share_eval($form_state['values']['import'])) {
-    webform_share_update_node($node, $webform, $form_state['values']['selector']);
-  }
-  $form_state['redirect'] = 'node/' . $node->nid . '/webform';
 }
 
 /**
@@ -152,32 +78,18 @@ function webform_share_form_node_type_form_alter(&$form, $form_state) {
   if (isset($form['#node_type'])) {
     // Only adds the element to content types that have been tag for webforms.
     if (in_array($form['#node_type']->type, webform_variable_get('webform_node_types'))) {
-      $form['workflow']['webform_share'] = array(
-        '#type' => 'textarea',
-        '#title' => t('Web form default components'),
-        '#default_value' => variable_get('webform_share_' . $form['#node_type']->type, ''),
-        // Access PHP so we need to control this.
-        '#access' => user_access('access webform share functionality'),
-        '#description' => t('Copy the code that was generated from a webform share export. This should not include &lt;?PHP or ?&gt; tags.'),
-      );
+      // Make sure that the user has permission.
+      if (user_access('access webform share functionality')) {
+        $form['workflow']['webform_share'] = array(
+          '#type' => 'textarea',
+          '#title' => t('Web form default components'),
+          '#default_value' => variable_get('webform_share_' . $form['#node_type']->type, ''),
+          // Access PHP so we need to control this.
+          '#access' => user_access('access webform share functionality'),
+          '#description' => t('Copy the code that was generated from a webform share export. This should not include &lt;?PHP or ?&gt; tags.'),
+        );
+      }
     }
-  }
-}
-
-/**
- * This should trigger the Webform module to save / update the components.
- */
-function webform_share_update_node($node, $webform = array(), $components_only = 1) {
-  if ($components_only) {
-    $node->webform['components'] = $webform['components'];
-  }
-  else {
-    $node->webform = $webform;
-    $node->webform['nid'] = $node->nid;
-  }
-  $node->webform['components'] = array_filter((array) $node->webform['components']);
-  foreach ($node->webform['components'] as $index => $component) {
-    $node->webform['components'][$index]['nid'] = $node->nid;
   }
 }
 
@@ -187,7 +99,13 @@ function webform_share_update_node($node, $webform = array(), $components_only =
 function webform_share_node_insert($node) {
   if ($type_defaults = webform_share_node_type_defaults($node->type)) {
     if ($webform = _webform_share_eval($type_defaults)) {
-      webform_share_update_node($node, $webform, 0);
+      $node->webform = $webform;
+      $node->webform['nid'] = $node->nid;
+      $node->webform['components'] = array_filter((array) $node->webform['components']);
+      foreach ($node->webform['components'] as $index => $component) {
+        $node->webform['components'][$index]['nid'] = $node->nid;
+        $node->webform['components'][$index]['pid'] = 0;
+      }
     }
   }
 }

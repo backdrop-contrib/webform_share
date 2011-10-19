@@ -10,9 +10,9 @@
  */
 function webform_share_install() {
   db_update('system')
-    ->condition('name', 'webform')
+    ->condition('name', 'webform_share')
     ->condition('type', 'module')
-    ->fields(array('weight' => -1))
+    ->fields(array('weight' => -2))
     ->execute();
 }
 
@@ -33,4 +33,3 @@ function webform_share_update_7000() {
     ->fields(array('weight' => -2))
     ->execute();
 }
-
