@@ -201,7 +201,7 @@ function webform_share_get_next_max_cid($nid) {
       ->range(0, 1)
       ->execute()
       ->fetchField();
-  return (empty($max_cid) ? 1 : $max_cid);
+  return (empty($max_cid) ? 0 : $max_cid);
 }
 
 
