@@ -259,7 +259,6 @@ function webform_share_node_insert($node) {
       $node->webform['components'] = array_filter((array) $node->webform['components']);
       foreach ($node->webform['components'] as $index => $component) {
         $node->webform['components'][$index]['nid'] = $node->nid;
-        $node->webform['components'][$index]['pid'] = 0;
       }
     }
   }
