@@ -182,7 +182,37 @@ function webform_share_components_update_form_submit($form, &$form_state) {
       $node->webform['components'][$cid] = $component;
     }
 
-    $node->webform['conditionals'] = isset($webform['conditionals']) ? $webform['conditionals'] : array();
+    // Map the imported conditionals.
+    $webform['conditionals'] = isset($webform['conditionals']) ? $webform['conditionals'] : array();
+    foreach ($webform['conditionals'] as $index => $conditional) {
+      foreach ($conditional['rules'] as $rindex => $rule) {
+        if (isset($rule['source']) && $rule['source'] != NULL) {
+          $rule['nid'] = $node->nid;
+          if (!empty($old_to_new_mappings[$rule['source']])) {
+            $rule['source'] = $old_to_new_mappings[$rule['source']];
+          }
+          else {
+            drupal_set_message(t('Unable to find the correct sources for conditionals.'), 'error', FALSE);
+          }
+          $conditional['rules'][$rindex] = $rule;
+        }
+      }
+
+      foreach ($conditional['actions'] as $aindex => $action) {
+        if (isset($action['target']) && $action['target'] != NULL) {
+          $action['nid'] = $node->nid;
+          if (!empty($old_to_new_mappings[$action['target']])) {
+            $action['target'] = $old_to_new_mappings[$action['target']];
+          }
+          else {
+            drupal_set_message(t('Unable to find the correct targets for conditionals.'), 'error', FALSE);
+          }
+          $conditional['actions'][$aindex] = $action;
+        }
+      }
+
+      $node->webform['conditionals'][$index] = $conditional;
+    }
 
     // If requested, re-add the existing components rather than allowing these
     // to be deleted. Existing cid values are safe to reuse.
