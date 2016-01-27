@@ -123,6 +123,15 @@ function webform_share_components_update_form($form, &$form_state, $node, $op = 
 function webform_share_components_update_form_submit($form, &$form_state) {
   $node = $form_state['node'];
   if ($webform = _webform_share_eval($form_state['values']['import'])) {
+    $hook_params = array(
+      'operation' => 'update',
+      'node' => $node,
+      'options' => array(
+        'components_only' => $form_state['values']['components_only'],
+        'keep_existing_components' => $form_state['values']['keep_existing_components'],
+      ),
+    );
+    drupal_alter('webform_share_import', $webform, $hook_params);
     // Load the original node and use this to map any fields based off
     // the form_key parameter. We need to preserve the existing cid if
     // possible to preserve the submission data.
@@ -182,6 +191,7 @@ function webform_share_components_update_form_submit($form, &$form_state) {
         $node->webform['components'][$cid] = $original->webform['components'][$cid];
       }
     }
+
     node_save($node);
   }
   $form_state['redirect'] = 'node/' . $node->nid . '/webform';
@@ -204,11 +214,12 @@ function webform_share_get_next_max_cid($nid) {
   return (empty($max_cid) ? 0 : $max_cid);
 }
 
-
 /**
  * Menu callback to generate the webform dump.
  */
 function webform_share_export($node) {
+  drupal_alter('webform_share_export', $node);
+
   $webform = '$webform = ' . var_export($node->webform, TRUE) . ";\n\n";
 
   if (ob_get_level()) {
@@ -254,6 +265,15 @@ function webform_share_form_node_type_form_alter(&$form, $form_state) {
 function webform_share_node_insert($node) {
   if ($type_defaults = webform_share_node_type_defaults($node->type)) {
     if ($webform = _webform_share_eval($type_defaults)) {
+      $hook_params = array(
+        'operation' => 'insert',
+        'node' => $node,
+        'options' => array(
+          'components_only' => FALSE,
+          'keep_existing_components' => FALSE,
+        ),
+      );
+      drupal_alter('webform_share_import', $webform, $hook_params);
       $node->webform = $webform;
       $node->webform['nid'] = $node->nid;
       $node->webform['components'] = array_filter((array) $node->webform['components']);
