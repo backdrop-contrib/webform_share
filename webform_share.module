@@ -7,15 +7,25 @@
  */
 
 /**
+ * Implements hook_config_info().
+ */
+function webform_share_config_info() {
+  $prefixes['webform_share.settings'] = array(
+    'label' => t('Webform Share settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
+}
+
+/**
  * Implements hook_permission().
- * This is required as we are handling PHP based files on import / export.
  */
 function webform_share_permission() {
   return array(
     'access webform share functionality' => array(
       'title' => t('Configure Webform Share'),
-      'description' => t('This permission enables the user to paste and run PHP code on the server.'),
-      'restrict access' => TRUE,
+      'description' => t('This permission enables the user to import, export and set content-type defaults for webforms.'),
+      'restrict access' => FALSE,
     ),
   );
 }
@@ -25,7 +35,7 @@ function webform_share_permission() {
  */
 function webform_share_node_type_defaults($type) {
   if (in_array($type, webform_variable_get('webform_node_types'))) {
-    return variable_get('webform_share_' . $type, '');
+    return config_get('webform_share.settings', 'webform_default_components_' . $type);
   }
   return '';
 }
@@ -41,25 +51,25 @@ function webform_share_menu() {
     'page arguments' => array(1),
     'access callback' => 'node_access',
     'access arguments' => array('update', 1),
-    'weight' => 5,
+    'weight' => 31,
     'type' => MENU_LOCAL_TASK,
   );
   $items['node/%webform_menu/webform/ws-import'] = array(
     'title' => 'Import',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('webform_share_components_update_form', 1),
     'access callback' => 'webform_share_menu_access',
     'access arguments' => array(1),
-    'weight' => 6,
+    'weight' => 30,
     'type' => MENU_LOCAL_TASK,
   );
   $items['node/%webform_menu/webform/ws-reset'] = array(
     'title' => 'Reset',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('webform_share_components_update_form', 1, TRUE),
     'access callback' => 'webform_share_menu_access',
     'access arguments' => array(1, 'reset'),
-    'weight' => 7,
+    'weight' => 32,
     'type' => MENU_LOCAL_TASK,
   );
 
@@ -88,9 +98,9 @@ function webform_share_components_update_form($form, &$form_state, $node, $op = 
   $form_state['node'] = $node;
   $form['components_only'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Update components only'),
+    '#title' => t('Update components and conditionals only'),
     '#default_value' => 1,
-    '#description' => t('If unchecked, the roles, emails and other settings will be overridden.'),
+    '#description' => t('If unchecked, the emails and form settings will be overridden.'),
   );
   $form['keep_existing_components'] = array(
     '#type' => 'checkbox',
@@ -102,12 +112,12 @@ function webform_share_components_update_form($form, &$form_state, $node, $op = 
     '#type' => 'textarea',
     '#title' => t('Import code'),
     '#default_value' => '',
-    '#description' => t('Copy the code that was generated from a webform share export. This should not include &lt;?PHP or ?&gt; tags.'),
+    '#description' => t('Copy the code that was generated from a webform share export.'),
     '#required' => TRUE,
   );
   if ($op == 'reset') {
     $form['import']['#access'] = FALSE;
-    $form['import']['#default_value'] = variable_get('webform_share_'. $node->type, '');
+    $form['import']['#default_value'] = config_get('webform_share.settings', 'webform_default_components_' . $node->type);
   }
   $form['submit'] = array(
     '#type' => 'submit',
@@ -122,7 +132,7 @@ function webform_share_components_update_form($form, &$form_state, $node, $op = 
  */
 function webform_share_components_update_form_submit($form, &$form_state) {
   $node = $form_state['node'];
-  if ($webform = _webform_share_eval($form_state['values']['import'])) {
+  if ($webform = backdrop_json_decode($form_state['values']['import'])) {
     $hook_params = array(
       'operation' => 'update',
       'node' => $node,
@@ -131,7 +141,7 @@ function webform_share_components_update_form_submit($form, &$form_state) {
         'keep_existing_components' => $form_state['values']['keep_existing_components'],
       ),
     );
-    drupal_alter('webform_share_import', $webform, $hook_params);
+    backdrop_alter('webform_share_import', $webform, $hook_params);
     // Load the original node and use this to map any fields based off
     // the form_key parameter. We need to preserve the existing cid if
     // possible to preserve the submission data.
@@ -168,7 +178,7 @@ function webform_share_components_update_form_submit($form, &$form_state) {
       if (!empty($component['pid'])) {
         // This mapping assumes that parents always come before children.
         if (empty($old_to_new_mappings[$component['pid']])) {
-          drupal_set_message(t('Unable to find the correct fieldset for %component.', array(
+          backdrop_set_message(t('Unable to find the correct fieldset for %component.', array(
             '%component' => $component['name'],
             )), 'error', TRUE);
         }
@@ -192,7 +202,7 @@ function webform_share_components_update_form_submit($form, &$form_state) {
             $rule['source'] = $old_to_new_mappings[$rule['source']];
           }
           else {
-            drupal_set_message(t('Unable to find the correct sources for conditionals.'), 'error', FALSE);
+            backdrop_set_message(t('Unable to find the correct sources for conditionals.'), 'error', FALSE);
           }
           $conditional['rules'][$rindex] = $rule;
         }
@@ -205,7 +215,7 @@ function webform_share_components_update_form_submit($form, &$form_state) {
             $action['target'] = $old_to_new_mappings[$action['target']];
           }
           else {
-            drupal_set_message(t('Unable to find the correct targets for conditionals.'), 'error', FALSE);
+            backdrop_set_message(t('Unable to find the correct targets for conditionals.'), 'error', FALSE);
           }
           $conditional['actions'][$aindex] = $action;
         }
@@ -253,53 +263,59 @@ function webform_share_get_next_max_cid($nid) {
  * Menu callback to generate the webform dump.
  */
 function webform_share_export($node) {
-  drupal_alter('webform_share_export', $node);
+  backdrop_alter('webform_share_export', $node);
+  $webform_share = backdrop_json_encode($node->webform);
 
-  $webform = '$webform = ' . var_export($node->webform, TRUE) . ";\n\n";
+  backdrop_add_http_header('Content-Type', 'application/json; charset=utf-8');
+  backdrop_add_http_header('Content-Disposition', 'attachment; filename="webform-' . $node->type . '-' . $node->nid . '.json";');
 
-  if (ob_get_level()) {
-    ob_end_clean();
-  }
-
-  drupal_add_http_header('Content-Type', 'text/plain; charset=utf-8');
-  drupal_add_http_header('Content-Disposition', 'attachment; filename="webform-' . $node->type . '-' . $node->nid . '.txt";');
-  drupal_add_http_header('Content-Length', sprintf('%u', strlen($webform)));
-
-  print $webform;
+  print $webform_share;
 
   exit();
 }
 
 /**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ * 
  * This hooks into the node type form to add the webform share default settings
  * textarea.
  */
 function webform_share_form_node_type_form_alter(&$form, $form_state) {
   // Targets content type edit forms
-  if (isset($form['#node_type'])) {
+  if (isset($form['type'])) {
     // Only adds the element to content types that have been tag for webforms.
     if (in_array($form['#node_type']->type, webform_variable_get('webform_node_types'))) {
       // Make sure that the user has permission.
       if (user_access('access webform share functionality')) {
-        $form['workflow']['webform_share'] = array(
+        $form['webform']['webform_share'] = array(
           '#type' => 'textarea',
-          '#title' => t('Web form default components'),
-          '#default_value' => variable_get('webform_share_' . $form['#node_type']->type, ''),
-          // Access PHP so we need to control this.
+          '#title' => t('Webform default components'),
+          '#default_value' => config_get('webform_share.settings', 'webform_default_components_' . $form['#node_type']->type),
           '#access' => user_access('access webform share functionality'),
-          '#description' => t('Copy the code that was generated from a webform share export. This should not include &lt;?PHP or ?&gt; tags.'),
+          '#description' => t('Copy the code that was generated from a webform share export.'),
         );
+        $form['#submit'][] = 'webform_share_form_node_type_form_submit';
       }
     }
+  }
+}
+
+function webform_share_form_node_type_form_submit(&$form, $form_state) {
+  if (isset($form_state['values']['webform_share'])) {
+    config_set('webform_share.settings', 'webform_default_components_' . $form_state['values']['type'], (string) $form_state['values']['webform_share']);
   }
 }
 
 /**
  * Implements hook_node_insert().
  */
-function webform_share_node_insert($node) {
+function webform_share_node_insert(Node $node) {
   if ($type_defaults = webform_share_node_type_defaults($node->type)) {
-    if ($webform = _webform_share_eval($type_defaults)) {
+    // watchdog('webform_share','$type_defaults:<pre>' . $type_defaults . '</pre>',NULL,WATCHDOG_INFO);
+    $webform_defaults = backdrop_json_decode($type_defaults);
+    // watchdog('webform_share','$webform_defaults:<pre>' . print_r($webform_defaults) . '</pre>',NULL,WATCHDOG_INFO);
+    if ($webform = $webform_defaults) {
+      // watchdog('webform_share','$webform:<pre>' . print_r($webform) . '</pre>',NULL,WATCHDOG_INFO);
       $hook_params = array(
         'operation' => 'insert',
         'node' => $node,
@@ -308,7 +324,7 @@ function webform_share_node_insert($node) {
           'keep_existing_components' => FALSE,
         ),
       );
-      drupal_alter('webform_share_import', $webform, $hook_params);
+      backdrop_alter('webform_share_import', $webform, $hook_params);
       $node->webform = $webform;
       $node->webform['nid'] = $node->nid;
       if (isset($node->webform['components'])) {
@@ -324,13 +340,4 @@ function webform_share_node_insert($node) {
       }
     }
   }
-}
-
-/**
- * Private helper function to assist in getting the information from the
- * webform dump.
- */
-function _webform_share_eval($str) {
-  eval($str);
-  return empty($webform) ? FALSE : $webform;
 }
