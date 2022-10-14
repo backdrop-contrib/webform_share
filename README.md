@@ -8,7 +8,7 @@ There are three main use cases for this module:
 
 1. To build a webform on a development site and import it into production.
 2. To use a set of components from a form in other forms on your site.
-3. To define a default set of webform components and settings for each
+3. To define and apply a default set of webform components and settings for each
 content-type.
 
 ### Differences from Drupal 7
@@ -60,17 +60,8 @@ for. (i.e. `admin/structure/types/manage/[content_type]/configure`)
 then you will need to enable, "Save Content Type" and return to the "Webform"
 sub-tab.
 5. Paste the contents of the .json file you downloaded into the "Webform
-default components" text area.
-
-### Applying default webform components to a node
-**NOTE** - There is a [known bug](https://github.com/backdrop-contrib/webform_share/issues/1) that means the webform components and settings are not
-automatically populated on node creation. Follow these steps:
-
-1. Create the node normally.
-2. Navigate to the "Webform" tab.
-3. Click on the "Reset" button.
-4. Adjust the options as required.
-5. Click "Reset".
+default components" text area and save the content-type.
+6. Create a new node of that content type and the webform will be automatically added.
 
 Issues
 ------
