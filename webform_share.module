@@ -24,7 +24,7 @@ function webform_share_permission() {
   return array(
     'access webform share functionality' => array(
       'title' => t('Configure Webform Share'),
-      'description' => t('This permission enables the user to import, export and set content-type defaults for webforms.'),
+      'description' => t("This permission enables the user to import, export and set content-type defaults for webforms. The latter also requires the 'administer content type' permission."),
       'restrict access' => FALSE,
     ),
   );
@@ -68,8 +68,18 @@ function webform_share_menu() {
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('webform_share_components_update_form', 1, TRUE),
     'access callback' => 'webform_share_menu_access',
-    'access arguments' => array(1, 'reset'),
+    'access arguments' => array(1, TRUE),
     'weight' => 32,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['node/%webform_menu/webform/ws-default'] = array(
+    'title' => 'Set default',
+    'description' => 'Set this webform as the default for the current content type.',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('webform_share_set_default_confirm',1),
+    'access callback' => 'webform_share_menu_access',
+    'access arguments' => array(1, FALSE, TRUE),
+    'weight' => 33,
     'type' => MENU_LOCAL_TASK,
   );
 
@@ -80,10 +90,15 @@ function webform_share_menu() {
  * Menu access callback.
  * Custom check on both the user access and node access.
  */
-function webform_share_menu_access($node, $reset = FALSE) {
+function webform_share_menu_access($node, $reset = FALSE, $default = FALSE) {
   if (node_access('update', $node)) {
     // We can only reset if there is some defaults set.
     if ($reset && !webform_share_node_type_defaults($node->type)) {
+      return FALSE;
+    }
+    // We can only set default if user has 'administer content types'
+    // permission.
+    if ($default && !user_access('administer content types')) {
       return FALSE;
     }
     return user_access('access webform share functionality');
@@ -125,6 +140,43 @@ function webform_share_components_update_form($form, &$form_state, $node, $op = 
   );
 
   return $form;
+}
+
+/**
+ * Menu callback for 'Set default'.
+ * Check that the user wants to proceed with a confirm_form.
+ */
+function webform_share_set_default_confirm($form, &$form_state, $node) {
+  $type = $node->type;
+  $type_name = node_type_get_name($node);
+  $nid = $node->nid;
+  $title = $node->title;
+  $form['nid'] = array('#type' => 'value', '#value' => $nid);
+  $form['type'] = array('#type' => 'value', '#value' => $type);
+  $form['type-name'] = array('#type' => 'value', '#value' => $type_name);
+  $question = t('Are you sure you want to set this webform as the default for the current content type?');
+  $path = 'node/' . $nid . '/webform';
+  $description = '<p>' . t('This will replace any existing default webform configuration for the %type_name content type with the webform configuration on %title.', array(
+    '%title' => $title,
+    '%type_name' => $type_name,
+  )) . '</p>';
+  $yes = t('Set default');
+  return confirm_form($form, $question, $path, $description, $yes);
+}
+
+/**
+ * Set current node webform config as default for content type.
+ */
+function webform_share_set_default_confirm_submit($form, &$form_state) {
+    $node = node_load($form_state['values']['nid']);
+    $webform_share = backdrop_json_encode($node->webform);
+    config_set('webform_share.settings', 'webform_default_components_' . $form_state['values']['type'], (string) $webform_share);
+    backdrop_set_message(t('The webform configuration from %title has been set as the default for the %type_name content type.', array(
+      '%title' => $node->title,
+      '%type_name' => $form_state['values']['type-name'],
+    )),'status', FALSE);
+    $form_state['redirect'] = 'node/' . $form_state['values']['nid'] . '/webform';
+    return;
 }
 
 /**
