@@ -15,6 +15,7 @@ content-type.
 - Exports as JSON array rather than PHP array definiton so no need to use the
 `eval()` function; because of this, there is no upgrade path.
 - Content type defaults moved from publishing options to Webform tab.
+- Content type defaults can be set from a node of the same content type.
 - Configuration moved to Configuration Management.
 - Some re-wording to improve clarity.
 
@@ -33,10 +34,10 @@ Installation
 Usage
 -----
 ### Export
-1. Navigate to the node and click the "Webform" tab
-2. Click the "Export" button
+1. Navigate to the node and click the "Webform" tab.
+2. Click the "Export" button.
 
-The webform configuration will download in a .json file
+The webform configuration will download in a .json file.
 
 ### Import
 1. Navigate to an existing or new node of a content type where webforms are
@@ -51,7 +52,13 @@ components and conditionals check the "Update components and conditionals only"
 option.
 
 ### Setting default webform components for content type
-1. Export the webform configuration that you want to use as the default
+#### From the same site and content type
+1. Navigate to the node and click the "Webform" tab.
+2. Click the 'Set default' button.
+3. Confirm
+
+#### From another site, or content type
+1. Export the webform configuration that you want to use as the default.
 2. Navigate to the Configure tab for the content-type you wish to set webform
 defaults for.
 for. (i.e. `admin/structure/types/manage/[content_type]/configure`)
