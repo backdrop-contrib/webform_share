@@ -46,7 +46,7 @@ enabled and click the "Webform" tab
 3. Paste the contents of the .json file you downloaded into the "Import code"
 text area.
 4. If you want to keep any existing components in your webform then check the
-"Keep existing components that are not includeded in the import" option.
+"Keep existing components that are not included in the import" option.
 5. If you want to keep the email and form settings and just override the
 components and conditionals check the "Update components and conditionals only"
 option.
