@@ -2,6 +2,9 @@ name = Webform Share
 description = Enables export, import and setting content-type defaults for Webforms.
 backdrop = 1.x
 type = module
+
+maintainers[yorkshire-pudding] = Martin Price
+
 package = Webform
 tags[] = Content
 tags[] = Configuration
